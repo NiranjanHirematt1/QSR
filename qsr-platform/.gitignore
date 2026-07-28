@@ -1,0 +1,16 @@
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+.import_linter_cache/
+.mypy_cache/
+# local data + generated reports
+backend/data/
+backend/**/ema_crossover_report.html
+*.sqlite
+# node / next
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+# env
+.env.local
