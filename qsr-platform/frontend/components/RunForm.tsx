@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { DatasetSummary, StrategyInfo } from "@/lib/types";
 
@@ -20,6 +20,26 @@ export default function RunForm(
 
   const dataset = useMemo(() => datasets.find((d) => d.dataset_id === datasetId), [datasets, datasetId]);
   const strategy = useMemo(() => strategies.find((s) => s.name === strategyName), [strategies, strategyName]);
+
+  // Props arrive after mount (parent loads them in an effect), and useState's
+  // initializer only runs once — so the initial "" would stick forever. Re-sync
+  // whenever the props change and the current selection is no longer valid:
+  // keep the existing choice if it's still present, otherwise fall back to the
+  // first item.
+  useEffect(() => {
+    if (datasets.length && !datasets.some((d) => d.dataset_id === datasetId)) {
+      setDatasetId(datasets[0].dataset_id);
+    }
+  }, [datasets, datasetId]);
+
+  useEffect(() => {
+    if (strategies.length && !strategies.some((s) => s.name === strategyName)) {
+      setStrategyName(strategies[0].name);
+      setParams({});
+    }
+  }, [strategies, strategyName]);
+
+  const canRun = Boolean(dataset && strategy);
 
   function setParam(k: string, v: number) { setParams((p) => ({ ...p, [k]: v })); }
 
@@ -76,7 +96,9 @@ export default function RunForm(
         </div>
       )}
       <div style={{ marginTop: 12 }}>
-        <button className="primary" disabled={busy} onClick={run}>{busy ? "Running…" : "Run backtest"}</button>
+        <button className="primary" disabled={busy || !canRun} onClick={run}>{busy ? "Running…" : "Run backtest"}</button>
+        {!canRun && <span className="k" style={{ marginLeft: 10 }}>
+          Select a dataset and strategy to run a backtest.</span>}
       </div>
       {err && <p className="err">{err}</p>}
     </div>
