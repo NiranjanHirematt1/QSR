@@ -45,6 +45,49 @@ def _import(client) -> str:
     return body["dataset_id"]
 
 
+def test_import_mt4_headerless(client):
+    # MT4 export: no header, dotted dates, comma-separated. Auto-detected.
+    rows = ["2024.01.02,14:30,4000.0,4001.0,3999.0,4000.5,100",
+            "2024.01.02,14:35,4000.5,4002.0,4000.0,4001.5,110"]
+    files = {"file": ("mt4.csv", io.BytesIO("\n".join(rows).encode()), "text/csv")}
+    r = client.post("/datasets", files=files,
+                    data={"symbol": "ES", "base_timeframe_seconds": "300"})
+    assert r.status_code == 200, r.text
+    assert r.json()["persisted"] and r.json()["row_count"] == 2
+
+
+def test_import_mt5_tsv(client):
+    rows = ["<DATE>\t<TIME>\t<OPEN>\t<HIGH>\t<LOW>\t<CLOSE>\t<TICKVOL>\t<VOL>\t<SPREAD>",
+            "2024.01.02\t14:30:00\t4000\t4001\t3999\t4000.5\t100\t0\t2",
+            "2024.01.02\t14:35:00\t4000.5\t4002\t4000\t4001.5\t110\t0\t2"]
+    files = {"file": ("mt5.csv", io.BytesIO("\n".join(rows).encode()), "text/csv")}
+    r = client.post("/datasets", files=files, data={"symbol": "ES"})
+    assert r.status_code == 200, r.text
+    assert r.json()["persisted"] and r.json()["row_count"] == 2
+
+
+def test_import_bad_file_returns_400(client):
+    # Missing the Low column -> informative 400, not a 500 crash.
+    rows = ["Datetime,Open,High,Close,Volume",
+            "2024-01-02 14:30:00,4000,4001,4000.5,100"]
+    files = {"file": ("bad.csv", io.BytesIO("\n".join(rows).encode()), "text/csv")}
+    r = client.post("/datasets", files=files, data={"symbol": "ES"})
+    assert r.status_code == 400, r.text
+    assert "low" in r.text.lower()
+
+
+def test_import_unparseable_timestamp_not_persisted(client):
+    rows = ["Date,Time,Open,High,Low,Close,Volume",
+            "2024-01-02,14:30:05,4000,4001,3999,4000.5,100"]
+    files = {"file": ("badts.csv", io.BytesIO("\n".join(rows).encode()), "text/csv")}
+    r = client.post("/datasets", files=files,
+                    data={"symbol": "ES", "datetime_format": "%Y-%m-%d %H:%M"})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["persisted"] is False
+    assert body["validation"]["has_errors"] is True
+
+
 def test_health_and_catalog(client):
     assert client.get("/health").json()["status"] == "ok"
     strategies = client.get("/strategies").json()

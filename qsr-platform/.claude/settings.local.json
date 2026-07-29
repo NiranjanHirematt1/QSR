@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c \"import polars, sys; print\\('polars', polars.__version__\\); print\\(sys.version\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest -q)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c \"import tzdata; print\\('tzdata', tzdata.__version__\\)\")",
+      "Bash(pip install *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m pytest tests/test_ingestion_formats.py -q)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m ruff check qsr/data/ingestion qsr/data/validation qsr/api/routers/datasets.py)",
+      "Bash(grep -E \"^[A-Z]{2,4}[0-9]|-->\")",
+      "Bash(PYTHONIOENCODING=utf-8 sed -n '/\\\\[tool.ruff\\\\]/,/\\\\[tool.mypy\\\\]/p' pyproject.toml)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m ruff check qsr)"
+    ]
+  }
+}

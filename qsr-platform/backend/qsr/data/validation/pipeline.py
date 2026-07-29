@@ -10,6 +10,7 @@ from .validators import (
     EmptyDatasetValidator,
     MissingCandleValidator,
     MonotonicTimestampValidator,
+    NullTimestampValidator,
     OhlcSanityValidator,
     TimeframeConsistencyValidator,
 )
@@ -17,6 +18,7 @@ from .validators import (
 # Default registry. Extending validation = append one entry here.
 DEFAULT_VALIDATORS: tuple[Validator, ...] = (
     EmptyDatasetValidator(),
+    NullTimestampValidator(),
     MonotonicTimestampValidator(),
     DuplicateTimestampValidator(),
     OhlcSanityValidator(),

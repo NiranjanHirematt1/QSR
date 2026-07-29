@@ -7,7 +7,7 @@ here so the readers stay simple and nothing is hardcoded.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,7 +17,13 @@ class ColumnMapping:
     Provide either ``datetime`` (a single combined column) OR both ``date`` and
     ``time``. ``source_tz`` names the timezone the source timestamps are in;
     ingestion converts everything to UTC. ``datetime_format`` is an optional
-    strptime pattern (omit to let Polars infer ISO/epoch).
+    strptime pattern (omit to let ingestion auto-detect ISO/dotted/epoch).
+
+    All fields are optional. Any left unset are resolved automatically by the
+    reader from the file's header (or positionally for header-less files); the
+    values here act as *hints* / overrides when auto-detection is not desired.
+    Column names supplied for ``open``/``high``/... are used only if they exist
+    in the file, otherwise the reader falls back to synonym auto-matching.
     """
 
     open: str = "Open"
@@ -30,10 +36,4 @@ class ColumnMapping:
     time: str | None = None
     datetime_format: str | None = None
     source_tz: str = "UTC"
-    epoch_unit: str | None = None  # one of None|"s"|"ms"|"us" when timestamps are epochs
-
-    def __post_init__(self) -> None:
-        if not self.datetime and not (self.date and self.time) and not self.date:
-            raise ValueError(
-                "ColumnMapping needs either `datetime`, `date`, or `date`+`time`"
-            )
+    epoch_unit: str | None = None  # one of None|"s"|"ms"|"us"|"ns" for epoch timestamps

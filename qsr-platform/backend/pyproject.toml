@@ -10,6 +10,12 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "python-multipart>=0.0.9",
+    # Polars needs the IANA time-zone database to materialise the UTC-aware
+    # `open_time` column (min/max, to_list, tz conversion). Windows and slim
+    # Linux containers ship no system zoneinfo, so without this the whole
+    # ingestion/validation pipeline aborts with an *uncatchable* Rust panic
+    # (ZoneInfoNotFoundError: 'No time zone found with key UTC').
+    "tzdata>=2024.1",
 ]
 
 [project.optional-dependencies]

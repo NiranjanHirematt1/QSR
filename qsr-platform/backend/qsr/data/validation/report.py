@@ -20,6 +20,7 @@ class IssueCode(str, Enum):
     TIMEZONE_ANOMALY = "TIMEZONE_ANOMALY"
     NON_MONOTONIC = "NON_MONOTONIC"
     EMPTY_DATASET = "EMPTY_DATASET"
+    NULL_TIMESTAMP = "NULL_TIMESTAMP"
 
 
 @dataclass(frozen=True, slots=True)

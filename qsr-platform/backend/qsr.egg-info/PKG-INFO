@@ -1,0 +1,18 @@
+Metadata-Version: 2.4
+Name: qsr
+Version: 0.1.0
+Summary: Local quantitative strategy research platform (forex/futures, event-driven, multi-timeframe)
+Requires-Python: >=3.11
+Requires-Dist: polars>=1.0
+Requires-Dist: pydantic>=2.6
+Requires-Dist: pyarrow>=15.0
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn>=0.29
+Requires-Dist: python-multipart>=0.0.9
+Provides-Extra: dev
+Requires-Dist: pytest>=8.0; extra == "dev"
+Requires-Dist: ruff>=0.5; extra == "dev"
+Requires-Dist: mypy>=1.10; extra == "dev"
+Requires-Dist: import-linter>=2.0; extra == "dev"
+Requires-Dist: httpx>=0.27; extra == "dev"
+Requires-Dist: reportlab>=4.0; extra == "dev"

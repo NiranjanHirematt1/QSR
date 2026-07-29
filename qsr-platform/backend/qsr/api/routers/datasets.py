@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 
 from ...application.import_dataset import ImportDataset, ImportRequest
 from ...data.ingestion.column_mapping import ColumnMapping
+from ...data.ingestion.errors import IngestionError
 from ...data.ingestion.readers import CsvReader, ParquetReader
 from ...domain.instruments.catalog import instrument_by_symbol
 from ...domain.market_data.timeframe import Timeframe
@@ -56,26 +57,46 @@ async def import_dataset(
     symbol: str = Form(...),
     base_timeframe_seconds: int = Form(300),
     source_format: str = Form("csv"),
+    # All mapping fields are optional overrides. Left unset, the reader
+    # auto-detects delimiter, header, columns and timestamp format — so
+    # standard CSV, TSV, MT4 and MT5 exports import without configuration.
     datetime_col: str | None = Form(None),
-    date_col: str | None = Form("Date"),
-    time_col: str | None = Form("Time"),
-    datetime_format: str | None = Form("%Y-%m-%d %H:%M"),
+    date_col: str | None = Form(None),
+    time_col: str | None = Form(None),
+    datetime_format: str | None = Form(None),
     source_tz: str = Form("UTC"),
+    epoch_unit: str | None = Form(None),
 ) -> ImportResponse:
     try:
         instrument = instrument_by_symbol(symbol)
     except KeyError as exc:
         raise HTTPException(400, str(exc)) from exc
 
-    tmp = Path(tempfile.mkdtemp()) / (file.filename or "upload")
-    with tmp.open("wb") as fh:
-        shutil.copyfileobj(file.file, fh)
+    if base_timeframe_seconds <= 0:
+        raise HTTPException(400, "base_timeframe_seconds must be a positive integer")
+    if source_format not in ("csv", "parquet"):
+        raise HTTPException(400, f"Unsupported source_format {source_format!r}; use 'csv' or 'parquet'")
 
-    mapping = ColumnMapping(datetime=datetime_col, date=date_col, time=time_col,
-                            datetime_format=datetime_format, source_tz=source_tz)
-    uc = ImportDataset(reader_for={"csv": CsvReader(), "parquet": ParquetReader()},
-                       candles=candle_repo(), catalog=catalog_repo())
-    result = uc.execute(ImportRequest(tmp, instrument,
-                                      Timeframe(base_timeframe_seconds), mapping, source_format))
+    tmp_dir = Path(tempfile.mkdtemp())
+    tmp = tmp_dir / (file.filename or "upload")
+    try:
+        with tmp.open("wb") as fh:
+            shutil.copyfileobj(file.file, fh)
+
+        mapping = ColumnMapping(datetime=datetime_col, date=date_col, time=time_col,
+                                datetime_format=datetime_format, source_tz=source_tz,
+                                epoch_unit=epoch_unit)
+        uc = ImportDataset(reader_for={"csv": CsvReader(), "parquet": ParquetReader()},
+                           candles=candle_repo(), catalog=catalog_repo())
+        try:
+            result = uc.execute(ImportRequest(
+                tmp, instrument, Timeframe(base_timeframe_seconds), mapping, source_format))
+        except IngestionError as exc:
+            # File cannot be read into the canonical schema — a client error,
+            # reported as an informative 400 rather than an opaque 500.
+            raise HTTPException(400, str(exc)) from exc
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
     return ImportResponse(dataset_id=result.dataset_id, persisted=result.persisted,
                           row_count=result.row_count, validation=result.report.to_dict())
